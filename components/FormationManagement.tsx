@@ -205,19 +205,112 @@ const CourseFormModal: React.FC<{
     );
 };
 
+
+// --- Exam Editor ---
+const ExamEditorModal: React.FC<{
+    exam: Exam,
+    onSave: (exam: Exam) => void,
+    onClose: () => void
+}> = ({ exam, onSave, onClose }) => {
+    const [localExam, setLocalExam] = useState<Exam>(exam);
+
+    const handleExamInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setLocalExam(prev => ({ ...prev, [name]: name === 'passingScore' ? parseInt(value) || 0 : value }));
+    };
+
+    const handleQuestionChange = (qIndex: number, field: 'text', value: string) => {
+        const newQuestions = [...localExam.questions];
+        newQuestions[qIndex] = { ...newQuestions[qIndex], [field]: value };
+        setLocalExam(prev => ({ ...prev, questions: newQuestions }));
+    };
+
+    const handleOptionChange = (qIndex: number, oIndex: number, value: string) => {
+        const newQuestions = [...localExam.questions];
+        const newOptions = [...newQuestions[qIndex].options];
+        newOptions[oIndex] = value;
+        newQuestions[qIndex] = { ...newQuestions[qIndex], options: newOptions };
+        setLocalExam(prev => ({ ...prev, questions: newQuestions }));
+    };
+
+    const handleCorrectAnswerChange = (qIndex: number, oIndex: number) => {
+        const newQuestions = [...localExam.questions];
+        newQuestions[qIndex] = { ...newQuestions[qIndex], correctAnswerIndex: oIndex };
+        setLocalExam(prev => ({ ...prev, questions: newQuestions }));
+    };
+
+    const addQuestion = () => {
+        const newQuestion: Question = { id: Date.now(), text: '', options: ['', '', '', ''], correctAnswerIndex: 0 };
+        setLocalExam(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
+    };
+
+    const removeQuestion = (qIndex: number) => {
+        const filteredQuestions = localExam.questions.filter((_, index) => index !== qIndex);
+        setLocalExam(prev => ({ ...prev, questions: filteredQuestions }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(localExam);
+    };
+
+    return (
+        <Modal title="Éditeur d'examen" onClose={onClose}>
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto p-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="title" placeholder="Titre de l'examen" value={localExam.title} onChange={handleExamInfoChange} required className="w-full p-2 border rounded-md" />
+                    <input type="number" name="passingScore" placeholder="Score de réussite (%)" value={localExam.passingScore} onChange={handleExamInfoChange} required className="w-full p-2 border rounded-md" />
+                </div>
+
+                <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold mb-2">Questions de l'examen</h3>
+                    <div className="space-y-4">
+                        {localExam.questions.map((q, qIndex) => (
+                            <div key={q.id || qIndex} className="bg-gray-100 p-3 rounded-md border">
+                                <div className="flex items-center mb-2">
+                                    <input type="text" placeholder={`Question ${qIndex + 1}`} value={q.text} onChange={(e) => handleQuestionChange(qIndex, 'text', e.target.value)} required className="flex-grow p-2 border rounded-md text-sm" />
+                                    <button type="button" onClick={() => removeQuestion(qIndex)} className="ml-2 text-red-500 hover:text-red-700 p-1"><TrashIcon className="w-5 h-5" /></button>
+                                </div>
+                                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {q.options.map((opt, oIndex) => (
+                                        <div key={oIndex} className="flex items-center">
+                                            <input type="radio" name={`correct-answer-${q.id || qIndex}`} checked={q.correctAnswerIndex === oIndex} onChange={() => handleCorrectAnswerChange(qIndex, oIndex)} className="mr-2 h-4 w-4 text-indigo-600" />
+                                            <input type="text" placeholder={`Option ${oIndex + 1}`} value={opt} onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)} required className="w-full p-1 border rounded-sm text-sm" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <button type="button" onClick={addQuestion} className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-800">+ Ajouter une question</button>
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4 border-t">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Annuler</button>
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Enregistrer l'examen</button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+
 // --- Detail View for a single Formation ---
 const FormationDetailEditor: React.FC<{
     formation: Formation;
     parts: Part[];
     courses: Course[];
+    exams: Exam[];
     onBack: () => void;
     onSavePart: (formationId: number, part: Partial<Part>) => void;
     onDeletePart: (formationId: number, partId: number) => void;
     onSaveCourse: (partId: number, course: Partial<Course>) => void;
     onDeleteCourse: (partId: number, courseId: number) => void;
-}> = ({ formation, parts, courses, onBack, onSavePart, onDeletePart, onSaveCourse, onDeleteCourse }) => {
+    onSaveExam: (exam: Exam) => void;
+}> = ({ formation, parts, courses, exams, onBack, onSavePart, onDeletePart, onSaveCourse, onDeleteCourse, onSaveExam }) => {
     const [editingPart, setEditingPart] = useState<Partial<Part> | null>(null);
     const [editingCourse, setEditingCourse] = useState<{ partId: number, course: Partial<Course> } | null>(null);
+    const [editingExam, setEditingExam] = useState<Exam | null>(null);
 
     const formationParts = parts.filter(p => formation.partIds.includes(p.id));
 
@@ -229,6 +322,11 @@ const FormationDetailEditor: React.FC<{
     const handleSaveCourse = (partId: number, courseData: Partial<Course>) => {
         onSaveCourse(partId, courseData);
         setEditingCourse(null);
+    };
+    
+    const handleSaveExam = (examData: Exam) => {
+        onSaveExam(examData);
+        setEditingExam(null);
     };
     
     const handleDeletePart = (partId: number) => {
@@ -252,16 +350,18 @@ const FormationDetailEditor: React.FC<{
             <div className="space-y-6">
                 {formationParts.map(part => {
                     const partCourses = courses.filter(c => part.courseIds.includes(c.id));
+                    const examForPart = exams.find(e => e.id === part.examId);
                     return (
                         <div key={part.id} className="bg-white p-4 rounded-lg shadow">
-                            <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-center mb-4 border-b pb-3">
                                 <h3 className="text-xl font-semibold">{part.title}</h3>
-                                <div>
-                                    <button onClick={() => setEditingPart(part)} className="text-indigo-600 hover:text-indigo-900 mr-2"><PencilIcon/></button>
-                                    <button className="text-red-500 hover:text-red-700" onClick={() => handleDeletePart(part.id)}><TrashIcon/></button>
+                                <div className="flex items-center space-x-2">
+                                    <button onClick={() => examForPart && setEditingExam(examForPart)} className="text-sm font-medium text-gray-600 hover:text-indigo-600">Gérer l'examen</button>
+                                    <button onClick={() => setEditingPart(part)} className="p-1 text-indigo-600 hover:text-indigo-900"><PencilIcon className="w-5 h-5"/></button>
+                                    <button className="p-1 text-red-500 hover:text-red-700" onClick={() => handleDeletePart(part.id)}><TrashIcon className="w-5 h-5"/></button>
                                 </div>
                             </div>
-                            <ul className="mt-4 space-y-2">
+                            <ul className="space-y-2">
                                 {partCourses.map(course => (
                                     <li key={course.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-md">
                                         <span>{course.title} ({course.type})</span>
@@ -271,6 +371,7 @@ const FormationDetailEditor: React.FC<{
                                         </div>
                                     </li>
                                 ))}
+                                {partCourses.length === 0 && <p className="text-sm text-gray-500 px-2">Aucun cours dans cette partie.</p>}
                             </ul>
                              <button onClick={() => setEditingCourse({partId: part.id, course: {}})} className="mt-4 text-sm text-indigo-600 font-semibold">+ Ajouter un cours</button>
                         </div>
@@ -281,6 +382,7 @@ const FormationDetailEditor: React.FC<{
              
             {editingPart && <PartFormModal part={editingPart} onSave={handleSavePart} onClose={() => setEditingPart(null)} />}
             {editingCourse && <CourseFormModal courseData={editingCourse} onSave={handleSaveCourse} onClose={() => setEditingCourse(null)} />}
+            {editingExam && <ExamEditorModal exam={editingExam} onSave={handleSaveExam} onClose={() => setEditingExam(null)} />}
         </div>
     );
 };
@@ -298,12 +400,13 @@ interface FormationManagementProps {
     onDeletePart: (formationId: number, partId: number) => void;
     onSaveCourse: (partId: number, course: Partial<Course>) => void;
     onDeleteCourse: (partId: number, courseId: number) => void;
+    onSaveExam: (exam: Exam) => void;
 }
 
 const FormationManagement: React.FC<FormationManagementProps> = ({ 
     formations, parts, courses, exams, 
     onSaveFormation, onDeleteFormation, 
-    onSavePart, onDeletePart, onSaveCourse, onDeleteCourse
+    onSavePart, onDeletePart, onSaveCourse, onDeleteCourse, onSaveExam
 }) => {
     const [editingFormation, setEditingFormation] = useState<Partial<Formation> | null>(null);
     const [selectedFormationId, setSelectedFormationId] = useState<number | null>(null);
@@ -327,12 +430,14 @@ const FormationManagement: React.FC<FormationManagementProps> = ({
                 <FormationDetailEditor 
                     formation={selectedFormation} 
                     parts={parts} 
-                    courses={courses} 
+                    courses={courses}
+                    exams={exams} 
                     onBack={() => setSelectedFormationId(null)}
                     onSavePart={onSavePart}
                     onDeletePart={onDeletePart}
                     onSaveCourse={onSaveCourse}
                     onDeleteCourse={onDeleteCourse}
+                    onSaveExam={onSaveExam}
                 />
             </div>
         )

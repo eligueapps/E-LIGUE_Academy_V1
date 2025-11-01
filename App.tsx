@@ -152,7 +152,7 @@ const App: React.FC = () => {
           id: Math.max(0, ...exams.map(e => e.id)) + 1,
           title: `Examen - ${partToSave.title || "Nouvelle partie"}`,
           questions: [],
-          passingScore: 70
+          passingScore: 80
         };
         setExams(prev => [...prev, newExam]);
         
@@ -212,6 +212,10 @@ const App: React.FC = () => {
       ? { ...p, courseIds: p.courseIds.filter(id => id !== courseId) }
       : p
     ));
+  };
+
+  const handleSaveExam = (examToSave: Exam) => {
+    setExams(prev => prev.map(e => (e.id === examToSave.id ? examToSave : e)));
   };
 
   const handleLogout = () => {
@@ -281,6 +285,7 @@ const App: React.FC = () => {
                     onDeletePart={handleDeletePart}
                     onSaveCourse={handleSaveCourse}
                     onDeleteCourse={handleDeleteCourse}
+                    onSaveExam={handleSaveExam}
                 />
             );
         default:

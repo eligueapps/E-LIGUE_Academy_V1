@@ -189,14 +189,16 @@ const ExamContent: React.FC<{ exam: Exam, onFinishExam: (score: number) => void 
     const [answers, setAnswers] = useState<{[key: number]: number}>({});
 
     const handleSubmit = () => {
-        let correctCount = 0;
-        exam.questions.forEach(q => {
-            if(answers[q.id] === q.correctAnswerIndex) {
-                correctCount++;
-            }
-        });
-        const score = Math.round((correctCount / exam.questions.length) * 100);
-        onFinishExam(score);
+        if (window.confirm("Voulez-vous vraiment soumettre vos réponses ?")) {
+            let correctCount = 0;
+            exam.questions.forEach(q => {
+                if(answers[q.id] === q.correctAnswerIndex) {
+                    correctCount++;
+                }
+            });
+            const score = exam.questions.length > 0 ? Math.round((correctCount / exam.questions.length) * 100) : 100;
+            onFinishExam(score);
+        }
     }
     
     return (
@@ -218,7 +220,13 @@ const ExamContent: React.FC<{ exam: Exam, onFinishExam: (score: number) => void 
                 ))}
             </div>
             <div className="mt-8 text-center">
-                <button onClick={handleSubmit} className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Soumettre l'examen</button>
+                <button 
+                    onClick={handleSubmit} 
+                    disabled={Object.keys(answers).length !== exam.questions.length}
+                    className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                    Valider les réponses
+                </button>
             </div>
         </div>
     );
@@ -242,6 +250,24 @@ const AttestationContent: React.FC<{ part: Part, user: User }> = ({ part, user }
     );
 }
 
+const ResultModal: React.FC<{
+  title: string;
+  message: string;
+  isSuccess: boolean;
+  onClose: () => void;
+}> = ({ title, message, isSuccess, onClose }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md text-center">
+      <h2 className={`text-2xl font-bold mb-4 ${isSuccess ? 'text-green-600' : 'text-red-600'}`}>{title}</h2>
+      <p className="text-gray-700 mb-6 whitespace-pre-line">{message}</p>
+      <button onClick={onClose} className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+        Fermer
+      </button>
+    </div>
+  </div>
+);
+
+
 interface FormationScreenProps {
   formationId: number;
   user: User;
@@ -259,6 +285,13 @@ const FormationScreen: React.FC<FormationScreenProps> = ({
     formations, parts: allParts, courses: allCourses, exams: allExams
 }) => {
   const formation = formations.find(f => f.id === formationId);
+  const [resultModal, setResultModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isSuccess: boolean;
+  } | null>(null);
+
 
   if (!formation) {
     return (
@@ -285,12 +318,14 @@ const FormationScreen: React.FC<FormationScreenProps> = ({
   const getCourseStatus = (courseId: number, part: Part, partIndex: number) => {
     if(progress.completedCourseIds.includes(courseId)) return 'completed';
 
+    // Lock if previous parts are not completed
     for (let i = 0; i < partIndex; i++) {
       const prevPart = parts[i];
       const prevExamAttempt = progress.examAttempts.find(ea => ea.partId === prevPart.id);
       if (!prevExamAttempt || !prevExamAttempt.passed) return 'locked';
     }
 
+    // Lock if previous courses in the same part are not completed
     const courseIndex = part.courseIds.indexOf(courseId);
     for (let i = 0; i < courseIndex; i++) {
         if (!progress.completedCourseIds.includes(part.courseIds[i])) return 'locked';
@@ -303,44 +338,60 @@ const FormationScreen: React.FC<FormationScreenProps> = ({
       if(!progress.completedCourseIds.includes(courseId)) {
         const newProgress = { ...progress, completedCourseIds: [...progress.completedCourseIds, courseId] };
         onProgressUpdate(formationId, newProgress);
-        alert('Cours terminé !');
       }
   }
 
   const handleFinishExam = (partId: number, score: number) => {
-      const part = allParts.find(p => p.id === partId);
-      if (!part) return;
+    const part = allParts.find(p => p.id === partId);
+    if (!part) return;
 
-      const exam = allExams.find(e => e.id === part.examId);
-      if (!exam) {
-          alert("Erreur: Examen introuvable.");
-          return;
-      }
-      
-      const currentAttempt = progress.examAttempts.find(ea => ea.partId === partId) || {partId, attempts: 0, passed: false};
-      
-      const newAttempt = {...currentAttempt, attempts: currentAttempt.attempts + 1, lastScore: score};
-      let newProgress;
+    const exam = allExams.find(e => e.id === part.examId);
+    if (!exam) return;
 
-      if(score >= exam.passingScore) {
-          newAttempt.passed = true;
-          alert(`Félicitations! Vous avez réussi avec un score de ${score}%.`);
-          setActiveView({type: 'attestation', id: partId});
+    const hasPassed = score >= exam.passingScore;
+    const currentAttempt = progress.examAttempts.find(ea => ea.partId === partId) || { partId, attempts: 0, passed: false };
+    const newAttempt = { ...currentAttempt, attempts: currentAttempt.attempts + 1, lastScore: score, passed: hasPassed };
+    
+    let newProgress = { ...progress };
+
+    if (hasPassed) {
+      setResultModal({
+        isOpen: true,
+        title: "Félicitations !",
+        message: `Vous avez réussi l'examen avec un score de ${score}%.`,
+        isSuccess: true,
+      });
+      // Automatically show attestation after success
+      setActiveView({ type: 'attestation', id: partId });
+    } else {
+      if (newAttempt.attempts >= 3) {
+        // 3rd and final failure
+        setResultModal({
+          isOpen: true,
+          title: "Échec de l'examen",
+          message: "Vous avez échoué à l'examen.\nVous devez revoir tous les cours de cette partie avant de pouvoir repasser l’examen.",
+          isSuccess: false,
+        });
+        // Reset progress for courses in this part
+        const partCourseIds = new Set(part.courseIds);
+        const updatedCompletedCourses = progress.completedCourseIds.filter(id => !partCourseIds.has(id));
+        newProgress = { ...newProgress, completedCourseIds: updatedCompletedCourses };
+        // Reset attempts for this specific exam
+        newAttempt.attempts = 0;
       } else {
-          if (newAttempt.attempts >= 3) {
-              alert(`Échec. Vous avez utilisé vos 3 tentatives. Vous devez revoir les cours de cette partie.`);
-              const partCourses = part.courseIds;
-              const completedCourses = progress.completedCourseIds.filter(id => !partCourses.includes(id));
-              newProgress = { ...progress, completedCourseIds: completedCourses };
-              newAttempt.attempts = 0; // Reset attempts
-          } else {
-             alert(`Échec avec un score de ${score}%. Il vous reste ${3 - newAttempt.attempts} tentative(s).`);
-          }
+        // 1st or 2nd failure
+        const remainingAttempts = 3 - newAttempt.attempts;
+        setResultModal({
+          isOpen: true,
+          title: "Échec de l'examen",
+          message: `Vous êtes échoué à l’examen. Vous avez obtenu une note de : ${score}%.\nIl vous reste ${remainingAttempts} tentative(s).`,
+          isSuccess: false,
+        });
       }
-      
-      const otherAttempts = progress.examAttempts.filter(ea => ea.partId !== partId);
-      newProgress = newProgress || progress;
-      onProgressUpdate(formationId, { ...newProgress, examAttempts: [...otherAttempts, newAttempt] });
+    }
+
+    const otherAttempts = progress.examAttempts.filter(ea => ea.partId !== partId);
+    onProgressUpdate(formationId, { ...newProgress, examAttempts: [...otherAttempts, newAttempt] });
   };
   
   const totalCourses = parts.reduce((acc, part) => acc + part.courseIds.length, 0);
@@ -387,8 +438,10 @@ const FormationScreen: React.FC<FormationScreenProps> = ({
           {parts.map((part, partIndex) => {
             const partCourses = allCourses.filter(c => part.courseIds.includes(c.id));
             const partExamAttempt = progress.examAttempts.find(ea => ea.partId === part.id);
-            const isPartCompleted = partExamAttempt && partExamAttempt.passed;
+            const isPartCompleted = partExamAttempt?.passed || false;
             const areAllCoursesCompleted = part.courseIds.every(cid => progress.completedCourseIds.includes(cid));
+            const isExamLocked = !areAllCoursesCompleted || (partExamAttempt && partExamAttempt.attempts >= 3 && !partExamAttempt.passed);
+
             const examForPart = allExams.find(e => e.id === part.examId);
             
             return (
@@ -424,13 +477,13 @@ const FormationScreen: React.FC<FormationScreenProps> = ({
                    <li className="pt-2">
                        <button 
                           onClick={() => setActiveView({type: 'exam', id: part.id})}
-                          disabled={!areAllCoursesCompleted || (partExamAttempt?.attempts || 0) >= 3 && !partExamAttempt?.passed}
+                          disabled={isExamLocked}
                           className={`w-full text-left flex items-center space-x-3 p-2 rounded-md font-semibold ${
                             activeView?.type === 'exam' && activeView.id === part.id ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
-                          } ${!areAllCoursesCompleted ? 'text-gray-400 cursor-not-allowed' : ''}`}
+                          } ${isExamLocked ? 'text-gray-400 cursor-not-allowed' : ''}`}
                        >
                          {isPartCompleted ? <CheckCircleIcon className="w-5 h-5 text-green-500"/> :
-                           !areAllCoursesCompleted ? <LockClosedIcon className="w-5 h-5 text-gray-400"/> :
+                           isExamLocked ? <LockClosedIcon className="w-5 h-5 text-gray-400"/> :
                            <PlayCircleIcon className="w-5 h-5 text-gray-500"/>
                          }
                          <span>Examen: {examForPart?.title || 'Titre introuvable'}</span>
@@ -456,6 +509,15 @@ const FormationScreen: React.FC<FormationScreenProps> = ({
       <main className="flex-1 overflow-y-auto">
         {renderActiveView()}
       </main>
+      
+      {resultModal?.isOpen && (
+        <ResultModal 
+            title={resultModal.title}
+            message={resultModal.message}
+            isSuccess={resultModal.isSuccess}
+            onClose={() => setResultModal(null)}
+        />
+      )}
     </div>
   );
 };
