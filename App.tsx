@@ -16,11 +16,12 @@ const Header: React.FC<{
   onShowProfile: () => void;
   language: 'fr' | 'ar';
   setLanguage: (lang: 'fr' | 'ar') => void;
-  isAdmin: boolean;
   adminView?: 'users' | 'dashboard' | 'management';
   setAdminView?: (view: 'users' | 'dashboard' | 'management') => void;
-}> = ({ user, onLogout, onShowProfile, language, setLanguage, isAdmin, adminView, setAdminView }) => {
+}> = ({ user, onLogout, onShowProfile, language, setLanguage, adminView, setAdminView }) => {
     const t = translations[language];
+    const isPrivileged = user.role === UserRole.Administrateur || user.role === UserRole.Formateur;
+
     return (
         <header className="bg-white shadow-md sticky top-0 z-40" dir={language === 'ar' ? 'rtl' : 'ltr'}>
             <div className="p-4 flex justify-between items-center">
@@ -45,16 +46,18 @@ const Header: React.FC<{
                     </button>
                 </div>
             </div>
-            {isAdmin && setAdminView && (
+            {isPrivileged && setAdminView && (
                 <nav className="px-4 flex space-x-4 border-b">
-                    <button
-                        onClick={() => setAdminView('users')}
-                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                            adminView === 'users' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        {t.userManagement}
-                    </button>
+                    {user.role === UserRole.Administrateur && (
+                         <button
+                            onClick={() => setAdminView('users')}
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                                adminView === 'users' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {t.userManagement}
+                        </button>
+                    )}
                     <button
                         onClick={() => setAdminView('dashboard')}
                         className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
@@ -77,6 +80,63 @@ const Header: React.FC<{
     );
 };
 
+// New component for forcing password change
+const ForcePasswordChangeModal: React.FC<{
+  onSave: (newPass: string) => void;
+  user: User;
+}> = ({ onSave, user }) => {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (newPassword !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Le mot de passe doit comporter au moins 6 caractères.');
+      return;
+    }
+    onSave(newPassword);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-2">Changement de mot de passe requis</h2>
+        <p className="text-gray-600 mb-6">Bonjour {user.firstName}, pour des raisons de sécurité, veuillez définir un nouveau mot de passe pour votre première connexion.</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="password"
+            placeholder="Nouveau mot de passe"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            className="w-full p-2 border rounded-md"
+          />
+          <input
+            type="password"
+            placeholder="Confirmer le nouveau mot de passe"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className="w-full p-2 border rounded-md"
+          />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <div className="flex justify-end pt-4">
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+              Enregistrer le mot de passe
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -94,9 +154,19 @@ const App: React.FC = () => {
   
   const [userProgress, setUserProgress] = useState<{ [userId: number]: UserProgress }>({});
   const [adminView, setAdminView] = useState<'users' | 'dashboard' | 'management'>('users');
+  const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
-  const handleLogin = useCallback((email: string, pass: string) => {
-    const user = users.find(u => u.email === email && u.password === pass);
+  const handleAdminViewChange = (newAdminView: 'users' | 'dashboard' | 'management') => {
+    // If the user is on the profile page, navigating to another admin tab
+    // should close the profile and return to the dashboard view.
+    if (view === 'profile') {
+      setView('dashboard');
+    }
+    setAdminView(newAdminView);
+  };
+
+  const handleLogin = useCallback((emailOrLoginId: string, pass: string) => {
+    const user = users.find(u => (u.email === emailOrLoginId || u.loginId === emailOrLoginId) && u.password === pass);
     if (user) {
       if (!user.isActive) {
         setLoginError("Ce compte est désactivé.");
@@ -104,9 +174,16 @@ const App: React.FC = () => {
       }
       setCurrentUser(user);
       setLoginError(null);
-      setView('dashboard');
-      if (user.role === UserRole.Administrateur) {
-        setAdminView('users');
+
+      if (user.mustChangePassword) {
+          setForcePasswordChange(true);
+      } else {
+          setView('dashboard');
+          if (user.role === UserRole.Administrateur) {
+            setAdminView('users');
+          } else if (user.role === UserRole.Formateur) {
+            setAdminView('dashboard');
+          }
       }
     } else {
       setLoginError("Identifiant ou mot de passe incorrect.");
@@ -121,8 +198,7 @@ const App: React.FC = () => {
       const newUser: User = { 
           ...userToSave, 
           id: Math.max(...users.map(u => u.id), 0) + 1,
-          assignedFormationIds: [],
-          password: 'password', // Default password
+          mustChangePassword: true,
       } as User;
       setUsers([...users, newUser]);
     }
@@ -241,6 +317,15 @@ const App: React.FC = () => {
     return true;
   };
 
+  const handleForceChangePassword = (newPass: string) => {
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, password: newPass, mustChangePassword: false };
+    setCurrentUser(updatedUser);
+    setUsers(users.map(u => (u.id === currentUser.id ? updatedUser : u)));
+    setForcePasswordChange(false);
+    setView('dashboard');
+  };
+
   const handleProgressUpdate = (formationId: number, newProgressData: UserProgress[number]) => {
     if (!currentUser) return;
     setUserProgress(prev => ({
@@ -257,24 +342,23 @@ const App: React.FC = () => {
   }
 
   const renderDashboardContent = () => {
-    if (currentUser.role === UserRole.Administrateur) {
-      switch (adminView) {
-        case 'users':
-          return <AdminDashboard users={users} onSaveUser={handleSaveUser} onDeleteUser={handleDeleteUser} onToggleUserStatus={handleToggleUserStatus} />;
-        case 'dashboard':
-          return (
-            <StudentDashboard
-              user={currentUser}
-              userProgress={userProgress[currentUser.id] || {}}
-              onSelectFormation={handleSelectFormation}
-              formations={formations}
-              parts={parts}
-              courses={courses}
-            />
-          );
-        case 'management':
-            return (
-                <FormationManagement 
+    const role = currentUser.role;
+
+    if (role === UserRole.Administrateur) {
+        switch (adminView) {
+            case 'users':
+                return <AdminDashboard 
+                    users={users} 
+                    formations={formations} 
+                    onSaveUser={handleSaveUser} 
+                    onDeleteUser={handleDeleteUser} 
+                    onToggleUserStatus={handleToggleUserStatus}
+                    userProgress={userProgress}
+                    parts={parts}
+                    exams={exams}
+                />;
+            case 'management':
+                return <FormationManagement 
                     formations={formations}
                     parts={parts}
                     courses={courses}
@@ -286,22 +370,54 @@ const App: React.FC = () => {
                     onSaveCourse={handleSaveCourse}
                     onDeleteCourse={handleDeleteCourse}
                     onSaveExam={handleSaveExam}
-                />
-            );
-        default:
-          return <AdminDashboard users={users} onSaveUser={handleSaveUser} onDeleteUser={handleDeleteUser} onToggleUserStatus={handleToggleUserStatus} />;
-      }
-    } else {
-      return (
-        <StudentDashboard
-          user={currentUser}
-          userProgress={userProgress[currentUser.id] || {}}
-          onSelectFormation={handleSelectFormation}
-          formations={formations}
-          parts={parts}
-          courses={courses}
-        />
-      );
+                />;
+            case 'dashboard':
+            default:
+                return <StudentDashboard
+                    user={currentUser}
+                    userProgress={userProgress[currentUser.id] || {}}
+                    onSelectFormation={handleSelectFormation}
+                    formations={formations}
+                    parts={parts}
+                    courses={courses}
+                />;
+        }
+    } else if (role === UserRole.Formateur) {
+        switch (adminView) {
+            case 'management':
+                return <FormationManagement 
+                    formations={formations}
+                    parts={parts}
+                    courses={courses}
+                    exams={exams}
+                    onSaveFormation={handleSaveFormation}
+                    onDeleteFormation={handleDeleteFormation}
+                    onSavePart={handleSavePart}
+                    onDeletePart={handleDeletePart}
+                    onSaveCourse={handleSaveCourse}
+                    onDeleteCourse={handleDeleteCourse}
+                    onSaveExam={handleSaveExam}
+                />;
+            case 'dashboard':
+            default:
+                 return <StudentDashboard
+                    user={currentUser}
+                    userProgress={userProgress[currentUser.id] || {}}
+                    onSelectFormation={handleSelectFormation}
+                    formations={formations}
+                    parts={parts}
+                    courses={courses}
+                />;
+        }
+    } else { // Candidates
+        return <StudentDashboard
+            user={currentUser}
+            userProgress={userProgress[currentUser.id] || {}}
+            onSelectFormation={handleSelectFormation}
+            formations={formations}
+            parts={parts}
+            courses={courses}
+        />;
     }
   };
 
@@ -344,11 +460,13 @@ const App: React.FC = () => {
         onShowProfile={handleShowProfile}
         language={language}
         setLanguage={setLanguage}
-        isAdmin={currentUser.role === UserRole.Administrateur}
         adminView={adminView}
-        setAdminView={currentUser.role === UserRole.Administrateur ? setAdminView : undefined}
+        setAdminView={(currentUser.role === UserRole.Administrateur || currentUser.role === UserRole.Formateur) ? handleAdminViewChange : undefined}
       />
       <main>{renderContent()}</main>
+      {forcePasswordChange && currentUser && (
+        <ForcePasswordChangeModal onSave={handleForceChangePassword} user={currentUser} />
+      )}
     </div>
   );
 };

@@ -29,15 +29,25 @@ export const ArrowPathIcon = ({ className }: { className?: string }) => (
 export const UserCircleIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.793 2.39A6.483 6.483 0 0010 16.5a6.483 6.483 0 004.793-2.11A5.99 5.99 0 0010 12z" clipRule="evenodd" /></svg>
 );
+export const PrinterIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}>
+      <path fillRule="evenodd" d="M5 4V3a2 2 0 012-2h6a2 2 0 012 2v1h-1.5a.5.5 0 000 1h1.5V6a2 2 0 01-2 2H7a2 2 0 01-2-2V5h1.5a.5.5 0 000-1H5zM3 8a2 2 0 012-2h10a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm2 3a1 1 0 011-1h6a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h4a1 1 0 100-2H6z" clipRule="evenodd" />
+    </svg>
+);
+export const DocumentChartBarIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}>
+      <path fillRule="evenodd" d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V8.342a2 2 0 00-.586-1.414l-4.342-4.342A2 2 0 0010.342 2H4zm6 6a1 1 0 10-2 0v4a1 1 0 102 0V8zm-3 2a1 1 0 10-2 0v2a1 1 0 102 0v-2zm6-2a1 1 0 10-2 0v4a1 1 0 102 0V8z" clipRule="evenodd" />
+    </svg>
+);
 
 
 // Mock Data
 export const INITIAL_USERS: User[] = [
-  { id: 1, firstName: 'Jean', lastName: 'Dupont', birthDate: '1985-05-20', cin: 'AB123456', role: UserRole.Arbitre, email: 'arbitre@ligue.com', password: 'password', isActive: true, assignedFormationIds: [1] },
-  { id: 2, firstName: 'Marie', lastName: 'Curie', birthDate: '1990-11-15', cin: 'CD789012', role: UserRole.Entraineur, email: 'entraineur@ligue.com', password: 'password', isActive: true, assignedFormationIds: [1] },
-  { id: 3, firstName: 'Pierre', lastName: 'Martin', birthDate: '1980-01-30', cin: 'EF345678', role: UserRole.Administrateur, email: 'admin@ligue.com', password: 'admin', isActive: true, assignedFormationIds: [] },
-  { id: 4, firstName: 'Sophie', lastName: 'Bernard', birthDate: '1992-07-22', cin: 'GH901234', role: UserRole.Employe, email: 'employe@ligue.com', password: 'password', isActive: false, assignedFormationIds: [1] },
-  { id: 5, firstName: 'Admin', lastName: 'Principal', birthDate: '1995-02-22', cin: 'ADMIN', role: UserRole.Administrateur, email: 'eligue_academy_admin', password: 'Ca@199522;;', isActive: true, assignedFormationIds: [] },
+  { id: 1, firstName: 'Jean', lastName: 'Dupont', birthDate: '1985-05-20', cin: 'AB123456', role: UserRole.Arbitre, email: 'arbitre@ligue.com', loginId: 'EA-1834512', password: 'password', isActive: true, assignedFormationIds: [1], mustChangePassword: false, phone: '0600000001' },
+  { id: 2, firstName: 'Marie', lastName: 'Curie', birthDate: '1990-11-15', cin: 'CD789012', role: UserRole.Entraineur, email: 'entraineur@ligue.com', loginId: 'EA-2834513', password: 'password', isActive: true, assignedFormationIds: [1], mustChangePassword: false, phone: '0600000002' },
+  { id: 3, firstName: 'Pierre', lastName: 'Martin', birthDate: '1980-01-30', cin: 'EF345678', role: UserRole.Administrateur, email: 'admin@ligue.com', loginId: 'EA-3834514', password: 'admin', isActive: true, assignedFormationIds: [], mustChangePassword: false, phone: '0600000003' },
+  { id: 4, firstName: 'Sophie', lastName: 'Bernard', birthDate: '1992-07-22', cin: 'GH901234', role: UserRole.Employe, email: 'employe@ligue.com', loginId: 'EA-4834515', password: 'password', isActive: false, assignedFormationIds: [1], mustChangePassword: false, phone: '0600000004' },
+  { id: 5, firstName: 'Admin', lastName: 'Principal', birthDate: '1995-02-22', cin: 'ADMIN', role: UserRole.Administrateur, email: 'eligue_academy_admin', loginId: 'EA-5834516', password: 'Ca@199522;;', isActive: true, assignedFormationIds: [], mustChangePassword: false, phone: '0600000005' },
 ];
 
 export const INITIAL_COURSES: Course[] = [

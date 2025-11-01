@@ -3,6 +3,7 @@ export enum UserRole {
   Entraineur = 'Entraîneur',
   Employe = 'Employé',
   Formateur = 'Formateur',
+  Club = 'Club',
   Administrateur = 'Administrateur',
 }
 
@@ -20,7 +21,10 @@ export interface User {
   cin: string;
   role: UserRole;
   email: string;
+  phone?: string;
+  loginId: string;
   password?: string; // Should be hashed in a real app
+  mustChangePassword?: boolean;
   isActive: boolean;
   assignedFormationIds: number[];
 }

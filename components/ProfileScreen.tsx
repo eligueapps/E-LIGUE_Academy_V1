@@ -99,6 +99,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-gray-100" dir={language === 'ar' ? 'rtl' : 'ltr'}>
         <div className="max-w-4xl mx-auto">
+            <button onClick={onBackToDashboard} className="mb-4 text-sm text-indigo-600 hover:underline">
+                &larr; {t.backToDashboard}
+            </button>
             <h1 className="text-3xl font-bold text-gray-900 mb-6">{t.profile}</h1>
 
             {/* Overall Progress */}

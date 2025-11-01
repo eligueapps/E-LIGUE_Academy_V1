@@ -38,7 +38,7 @@ const FormationOverviewCard: React.FC<{
 
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, userProgress, onSelectFormation, formations, parts, courses }) => {
-  const formationsToDisplay = user.role === UserRole.Administrateur
+  const formationsToDisplay = (user.role === UserRole.Administrateur || user.role === UserRole.Formateur)
     ? formations
     : formations.filter(f => user.assignedFormationIds.includes(f.id));
 
@@ -54,7 +54,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, userProgress,
   }
     
   const calculateProgress = (formationId: number) => {
-    if (user.role === UserRole.Administrateur) return 0;
+    if (user.role === UserRole.Administrateur || user.role === UserRole.Formateur) return 0;
 
     const progress = userProgress[formationId];
     if (!progress) return 0;
@@ -83,7 +83,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, userProgress,
         ) : (
           <div className="col-span-full text-center py-12 bg-white rounded-lg shadow-md">
             <p className="text-gray-500 text-lg">
-              {user.role === UserRole.Administrateur 
+              {(user.role === UserRole.Administrateur || user.role === UserRole.Formateur)
                 ? "Aucune formation n'a encore été créée."
                 : "Aucune formation ne vous est actuellement assignée."
               }
