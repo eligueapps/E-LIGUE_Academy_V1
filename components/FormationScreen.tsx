@@ -233,16 +233,68 @@ const ExamContent: React.FC<{ exam: Exam, onFinishExam: (score: number) => void 
 };
 
 const AttestationContent: React.FC<{ part: Part, user: User }> = ({ part, user }) => {
+    const LaurelWreath = () => (
+      <svg className="absolute w-[350px] h-[350px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-200" viewBox="0 0 200 200">
+        <defs><path id="leaf" d="M0,0 C10,5 10,15 0,20 C-10,15 -10,5 0,0 Z" /></defs>
+        <g transform="translate(100, 100)"><path d="M0,-80 A60,80 0 0,1 40,0" stroke="currentColor" strokeWidth="1" fill="none" /><use href="#leaf" x="0" y="-80" transform="rotate(20)" fill="currentColor"/><use href="#leaf" x="12" y="-65" transform="rotate(10)" fill="currentColor"/><use href="#leaf" x="25" y="-48" transform="rotate(0)" fill="currentColor"/><use href="#leaf" x="35" y="-28" transform="rotate(-10)" fill="currentColor"/><use href="#leaf" x="40" y="-8" transform="rotate(-20)" fill="currentColor"/></g>
+        <g transform="translate(100, 100) scale(-1, 1)"><path d="M0,-80 A60,80 0 0,1 40,0" stroke="currentColor" strokeWidth="1" fill="none" /><use href="#leaf" x="0" y="-80" transform="rotate(20)" fill="currentColor"/><use href="#leaf" x="12" y="-65" transform="rotate(10)" fill="currentColor"/><use href="#leaf" x="25" y="-48" transform="rotate(0)" fill="currentColor"/><use href="#leaf" x="35" y="-28" transform="rotate(-10)" fill="currentColor"/><use href="#leaf" x="40" y="-8" transform="rotate(-20)" fill="currentColor"/></g>
+      </svg>
+    );
+
+    const Signature = () => (
+      <svg className="w-48 h-20" viewBox="0 0 200 80">
+        <path d="M 20 55 Q 30 20 50 45 T 80 50 C 90 20 120 20 130 60 Q 140 70 150 50 T 180 55" stroke="#111827" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      </svg>
+    );
+
     return (
-        <div className="p-8 text-center">
-             <div className="max-w-3xl mx-auto bg-white p-10 rounded-lg shadow-2xl border-4 border-indigo-600">
-                <h2 className="text-4xl font-bold text-indigo-800 mb-4">Attestation de Réussite</h2>
-                <p className="text-lg text-gray-600 mb-8">Ceci certifie que</p>
-                <p className="text-3xl font-semibold text-gray-900 mb-8">{user.firstName} {user.lastName}</p>
-                <p className="text-lg text-gray-600 mb-8">a complété avec succès la partie</p>
-                <p className="text-2xl font-medium text-gray-800 mb-10">"{part.title}"</p>
-                <p className="text-sm text-gray-500">Date: {new Date().toLocaleDateString('fr-FR')}</p>
-                <button onClick={() => window.print()} className="mt-10 px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 print:hidden">
+        <div className="p-8 bg-gray-100 flex flex-col items-center justify-center relative print:p-0 print:bg-white">
+            <div className="w-full max-w-4xl bg-[#f4f1eb] p-2 font-serif shadow-lg print:shadow-none print:w-full print:h-full aspect-[1/1.414] md:aspect-auto">
+                <div className="w-full h-full border-[6px] border-purple-300 p-1">
+                    <div className="w-full h-full border-2 border-purple-500 p-8 flex flex-col items-center justify-between text-center relative">
+                        {/* Background element */}
+                        <div className="absolute inset-0 flex items-center justify-center z-0">
+                           <LaurelWreath />
+                        </div>
+                        
+                        {/* Foreground content */}
+                        <div className="relative z-10 w-full flex flex-col h-full">
+                            {/* Header */}
+                            <div>
+                                <h1 className="text-5xl md:text-6xl text-purple-600 tracking-[0.2em]">ATTESTATION</h1>
+                                <p className="text-xl md:text-2xl text-purple-600 tracking-wider mt-2">E-LIGUE ACADEMY</p>
+                            </div>
+    
+                            {/* Main Content */}
+                            <div className="flex-grow flex flex-col justify-center py-4">
+                                <p className="text-lg text-gray-600 mt-8 font-sans">Ceci certifie que</p>
+                                <p className="text-4xl md:text-5xl font-bold text-gray-900 my-3 font-sans break-words">{user.firstName} {user.lastName}</p>
+                                <p className="text-lg text-gray-600 font-sans">a suivi et complété avec succès la partie de formation :</p>
+                                <p className="text-2xl md:text-3xl text-purple-600 my-5 font-semibold">"{part.title}"</p>
+                                <p className="text-lg text-gray-600 mt-4 font-sans">Le {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                            </div>
+    
+                            {/* Footer */}
+                            <div className="w-full flex justify-between items-end mt-8 text-sm font-sans">
+                                <div className="text-left">
+                                    <p className="font-bold border-b-2 border-amber-600 inline-block pb-1">Série :</p>
+                                    <p className="font-bold text-gray-800 mt-1">E-LIGUE Academy</p>
+                                    <p className="text-gray-700">E-signe Academy</p>
+                                </div>
+                                <div className="text-center">
+                                    <Signature />
+                                    <div className="border-t-2 border-amber-600 pt-1 mt-[-10px]">
+                                        <p className="font-bold text-gray-800">Driss Jabraoui</p>
+                                        <p className="text-gray-700">Directeur E-LIGUE Academy</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div className="mt-6 print:hidden">
+                <button onClick={() => window.print()} className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                     Imprimer
                 </button>
             </div>
